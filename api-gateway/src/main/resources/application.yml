@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: api-gateway
+  config:
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  cloud:
+    gateway:
+      routes:
+        - id: clientes
+          uri: lb://clientes-service
+          predicates:
+            - Path=/api/legacy/clientes/**
+        # El retiro lo procesa Pagos (debe ir ANTES de la ruta general de cuentas)
+        - id: retiro
+          uri: lb://pagos-service
+          predicates:
+            - Path=/api/legacy/cuentas/*/retiro
+        - id: cuentas
+          uri: lb://cuentas-service
+          predicates:
+            - Path=/api/legacy/cuentas/**
+        - id: pagos
+          uri: lb://pagos-service
+          predicates:
+            - Path=/api/legacy/transacciones/**,/api/pagos/**
+        - id: batch
+          uri: lb://batch-service
+          predicates:
+            - Path=/batch/**
+
+server:
+  port: 8080
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+    registry-fetch-interval-seconds: 5
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 15
+    instance-id: ${spring.application.name}:${spring.cloud.client.ip-address}:${server.port}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    gateway:
+      enabled: true

@@ -1,0 +1,2361 @@
+{
+  "info": {
+    "_postman_id": "837d2183-af4d-4c8c-a875-b5ded21d94a2",
+    "name": "Banco XYZ - EFT S9 (Spring Batch + Spring Cloud + OAuth2 + Kafka + Resilience4j)",
+    "description": "Ejecutar primero la carpeta 00 (obtiene los tokens y los guarda en el Environment). Luego ejecutar las demas carpetas. Se puede correr todo con Collection Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 - OAuth2: obtener tokens",
+      "description": "Flujo OAuth 2.0 client_credentials contra el Authorization Server.",
+      "item": [
+        {
+          "name": "Token postman-client (todos los scopes)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Token emitido (200)', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respuesta incluye access_token Bearer', () => { pm.expect(j.access_token).to.be.a('string'); pm.expect(j.token_type).to.eql('Bearer'); });",
+                  "pm.environment.set('token_full', j.access_token);",
+                  "console.log('Scopes concedidos:', j.scope);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "postman-client",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{postman_secret}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials",
+                  "type": "text"
+                },
+                {
+                  "key": "scope",
+                  "value": "banking.read banking.write web.access mobile.access atm.operate",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{auth_url}}/oauth2/token",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "oauth2",
+                "token"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Token web-frontend (solo web.access)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Token emitido (200)', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respuesta incluye access_token Bearer', () => { pm.expect(j.access_token).to.be.a('string'); pm.expect(j.token_type).to.eql('Bearer'); });",
+                  "pm.environment.set('token_web', j.access_token);",
+                  "console.log('Scopes concedidos:', j.scope);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "web-frontend",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{web_frontend_secret}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials",
+                  "type": "text"
+                },
+                {
+                  "key": "scope",
+                  "value": "web.access",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{auth_url}}/oauth2/token",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "oauth2",
+                "token"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Token mobile-app (solo mobile.access)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Token emitido (200)', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respuesta incluye access_token Bearer', () => { pm.expect(j.access_token).to.be.a('string'); pm.expect(j.token_type).to.eql('Bearer'); });",
+                  "pm.environment.set('token_mobile', j.access_token);",
+                  "console.log('Scopes concedidos:', j.scope);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "mobile-app",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{mobile_app_secret}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials",
+                  "type": "text"
+                },
+                {
+                  "key": "scope",
+                  "value": "mobile.access",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{auth_url}}/oauth2/token",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "oauth2",
+                "token"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Token atm-terminal (solo atm.operate)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Token emitido (200)', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respuesta incluye access_token Bearer', () => { pm.expect(j.access_token).to.be.a('string'); pm.expect(j.token_type).to.eql('Bearer'); });",
+                  "pm.environment.set('token_atm', j.access_token);",
+                  "console.log('Scopes concedidos:', j.scope);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "atm-terminal",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{atm_terminal_secret}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials",
+                  "type": "text"
+                },
+                {
+                  "key": "scope",
+                  "value": "atm.operate",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{auth_url}}/oauth2/token",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "oauth2",
+                "token"
+              ]
+            }
+          }
+        },
+        {
+          "name": "JWKS - clave publica del auth-server",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Publica al menos una clave RSA', () => pm.expect(pm.response.json().keys.length).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{auth_url}}/oauth2/jwks",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "oauth2",
+                "jwks"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Credenciales invalidas -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_url}}/oauth2/token",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "oauth2",
+                "token"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Core Banking (seguridad por scope)",
+      "description": "",
+      "item": [
+        {
+          "name": "GET cliente 1 (token_full) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{core_url}}/api/legacy/clientes/1",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "api",
+                "legacy",
+                "clientes",
+                "1"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET cuenta CTA-0001 (token_full) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{core_url}}/api/legacy/cuentas/CTA-0001",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "api",
+                "legacy",
+                "cuentas",
+                "CTA-0001"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET cliente 1 SIN token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{core_url}}/api/legacy/clientes/1",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "api",
+                "legacy",
+                "clientes",
+                "1"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET cliente 1 con token_atm (sin banking.read) -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{core_url}}/api/legacy/clientes/1",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "api",
+                "legacy",
+                "clientes",
+                "1"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_atm}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - BFF Web",
+      "description": "",
+      "item": [
+        {
+          "name": "Dashboard cliente 1 (token_web) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Incluye cuentas con historial completo', () => pm.expect(d.cuentas[0].historialCompleto.length).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{web_url}}/web/clientes/1/dashboard",
+              "host": [
+                "{{web_url}}"
+              ],
+              "path": [
+                "web",
+                "clientes",
+                "1",
+                "dashboard"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_web}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dashboard SIN token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{web_url}}/web/clientes/1/dashboard",
+              "host": [
+                "{{web_url}}"
+              ],
+              "path": [
+                "web",
+                "clientes",
+                "1",
+                "dashboard"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Dashboard con token_mobile (scope incorrecto) -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{web_url}}/web/clientes/1/dashboard",
+              "host": [
+                "{{web_url}}"
+              ],
+              "path": [
+                "web",
+                "clientes",
+                "1",
+                "dashboard"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mobile}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dashboard cliente inexistente -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{web_url}}/web/clientes/999/dashboard",
+              "host": [
+                "{{web_url}}"
+              ],
+              "path": [
+                "web",
+                "clientes",
+                "999",
+                "dashboard"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_web}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - BFF Movil",
+      "description": "",
+      "item": [
+        {
+          "name": "Resumen CTA-0001 (token_mobile) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Maximo 5 movimientos', () => pm.expect(pm.response.json().ultimosMovimientos.length).to.be.at.most(5));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mobile_url}}/mobile/cuentas/CTA-0001/resumen",
+              "host": [
+                "{{mobile_url}}"
+              ],
+              "path": [
+                "mobile",
+                "cuentas",
+                "CTA-0001",
+                "resumen"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mobile}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resumen SIN token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mobile_url}}/mobile/cuentas/CTA-0001/resumen",
+              "host": [
+                "{{mobile_url}}"
+              ],
+              "path": [
+                "mobile",
+                "cuentas",
+                "CTA-0001",
+                "resumen"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Resumen con token_web (scope incorrecto) -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mobile_url}}/mobile/cuentas/CTA-0001/resumen",
+              "host": [
+                "{{mobile_url}}"
+              ],
+              "path": [
+                "mobile",
+                "cuentas",
+                "CTA-0001",
+                "resumen"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_web}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - BFF Cajero (ATM)",
+      "description": "",
+      "item": [
+        {
+          "name": "Saldo CTA-0001 (token_atm) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{atm_url}}/atm/cuentas/CTA-0001/saldo",
+              "host": [
+                "{{atm_url}}"
+              ],
+              "path": [
+                "atm",
+                "cuentas",
+                "CTA-0001",
+                "saldo"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_atm}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Saldo SIN token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{atm_url}}/atm/cuentas/CTA-0001/saldo",
+              "host": [
+                "{{atm_url}}"
+              ],
+              "path": [
+                "atm",
+                "cuentas",
+                "CTA-0001",
+                "saldo"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Retiro $50.000 dentro del limite -> 200 (publica evento en Kafka)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{atm_url}}/atm/cuentas/CTA-0001/retiro",
+              "host": [
+                "{{atm_url}}"
+              ],
+              "path": [
+                "atm",
+                "cuentas",
+                "CTA-0001",
+                "retiro"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_atm}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 50000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Retiro $250.000 (monto alto -> ALERTA en notification-service)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{atm_url}}/atm/cuentas/CTA-0001/retiro",
+              "host": [
+                "{{atm_url}}"
+              ],
+              "path": [
+                "atm",
+                "cuentas",
+                "CTA-0001",
+                "retiro"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_atm}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 250000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Retiro $500.000 excede limite diario -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{atm_url}}/atm/cuentas/CTA-0001/retiro",
+              "host": [
+                "{{atm_url}}"
+              ],
+              "path": [
+                "atm",
+                "cuentas",
+                "CTA-0001",
+                "retiro"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_atm}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 500000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Retiro monto invalido (0) -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{atm_url}}/atm/cuentas/CTA-0001/retiro",
+              "host": [
+                "{{atm_url}}"
+              ],
+              "path": [
+                "atm",
+                "cuentas",
+                "CTA-0001",
+                "retiro"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_atm}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Retiro cuenta inexistente -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{atm_url}}/atm/cuentas/CTA-9999/retiro",
+              "host": [
+                "{{atm_url}}"
+              ],
+              "path": [
+                "atm",
+                "cuentas",
+                "CTA-9999",
+                "retiro"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_atm}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Kafka: notificaciones consumidas",
+      "description": "",
+      "item": [
+        {
+          "name": "Notificaciones recibidas via Kafka (token_full) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Hay notificaciones consumidas desde Kafka', () => pm.expect(pm.response.json().length).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{notif_url}}/notifications",
+              "host": [
+                "{{notif_url}}"
+              ],
+              "path": [
+                "notifications"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Ejecutar DESPUES de los retiros de la carpeta 04. Debe aparecer un INFO y una ALERTA_MONTO_ALTO."
+          }
+        },
+        {
+          "name": "Notificaciones SIN token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{notif_url}}/notifications",
+              "host": [
+                "{{notif_url}}"
+              ],
+              "path": [
+                "notifications"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Resilience4j: estado de los patrones",
+      "description": "Las 3 primeras pruebas de la carpeta se ejecutan con todo arriba; la ultima requiere detener el core (ver README).",
+      "item": [
+        {
+          "name": "BFF Web - circuit breakers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{web_url}}/actuator/circuitbreakers",
+              "host": [
+                "{{web_url}}"
+              ],
+              "path": [
+                "actuator",
+                "circuitbreakers"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "BFF Movil - circuit breakers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mobile_url}}/actuator/circuitbreakers",
+              "host": [
+                "{{mobile_url}}"
+              ],
+              "path": [
+                "actuator",
+                "circuitbreakers"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "BFF ATM - circuit breakers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{atm_url}}/actuator/circuitbreakers",
+              "host": [
+                "{{atm_url}}"
+              ],
+              "path": [
+                "actuator",
+                "circuitbreakers"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "BFF ATM - eventos del circuit breaker",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{atm_url}}/actuator/circuitbreakerevents",
+              "host": [
+                "{{atm_url}}"
+              ],
+              "path": [
+                "actuator",
+                "circuitbreakerevents"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "BFF Web - reintentos (retries)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{web_url}}/actuator/retries",
+              "host": [
+                "{{web_url}}"
+              ],
+              "path": [
+                "actuator",
+                "retries"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "BFF Web - bulkheads",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{web_url}}/actuator/bulkheads",
+              "host": [
+                "{{web_url}}"
+              ],
+              "path": [
+                "actuator",
+                "bulkheads"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Spring Batch (via API Gateway)",
+      "item": [
+        {
+          "name": "Sin token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 sin token', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{core_url}}/batch/jobs/transacciones-diarias/ejecutar",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "batch",
+                "jobs",
+                "transacciones-diarias",
+                "ejecutar"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Ejecutar job transacciones diarias (semana_3) -> COMPLETED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Job COMPLETED', () => pm.expect(j.estado).to.eql('COMPLETED'));",
+                  "const carga = j.pasos[0];",
+                  "pm.test('Leidos = 1000', () => pm.expect(carga.leidos).to.eql(1000));",
+                  "pm.test('Escritos = 392 (validos)', () => pm.expect(carga.escritos).to.eql(392));",
+                  "pm.test('Omitidos = 608 (rechazados por reglas)', () => pm.expect(carga.omitidos).to.eql(608));",
+                  "pm.test('Se genero el reporte (2do paso COMPLETED)', () => pm.expect(j.pasos[1].estado).to.eql('COMPLETED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{core_url}}/batch/jobs/transacciones-diarias/ejecutar?semana=semana_3",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "batch",
+                "jobs",
+                "transacciones-diarias",
+                "ejecutar"
+              ],
+              "query": [
+                {
+                  "key": "semana",
+                  "value": "semana_3"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Lee el CSV, valida, omite filas invalidas y carga las validas en la BD con varios hilos."
+          }
+        },
+        {
+          "name": "Ejecutar job intereses trimestrales (semana_3) -> COMPLETED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Job COMPLETED', () => pm.expect(j.estado).to.eql('COMPLETED'));",
+                  "const carga = j.pasos[0];",
+                  "pm.test('Leidos = 1000', () => pm.expect(carga.leidos).to.eql(1000));",
+                  "pm.test('Escritos = 421 (validos)', () => pm.expect(carga.escritos).to.eql(421));",
+                  "pm.test('Omitidos = 579 (rechazados por reglas)', () => pm.expect(carga.omitidos).to.eql(579));",
+                  "pm.test('Se genero el reporte (2do paso COMPLETED)', () => pm.expect(j.pasos[1].estado).to.eql('COMPLETED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{core_url}}/batch/jobs/intereses-trimestrales/ejecutar?semana=semana_3",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "batch",
+                "jobs",
+                "intereses-trimestrales",
+                "ejecutar"
+              ],
+              "query": [
+                {
+                  "key": "semana",
+                  "value": "semana_3"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Lee el CSV, valida, omite filas invalidas y carga las validas en la BD con varios hilos."
+          }
+        },
+        {
+          "name": "Ejecutar job estados financieros anuales (semana_3) -> COMPLETED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Job COMPLETED', () => pm.expect(j.estado).to.eql('COMPLETED'));",
+                  "const carga = j.pasos[0];",
+                  "pm.test('Leidos = 1000', () => pm.expect(carga.leidos).to.eql(1000));",
+                  "pm.test('Escritos = 759 (validos)', () => pm.expect(carga.escritos).to.eql(759));",
+                  "pm.test('Omitidos = 241 (rechazados por reglas)', () => pm.expect(carga.omitidos).to.eql(241));",
+                  "pm.test('Se genero el reporte (2do paso COMPLETED)', () => pm.expect(j.pasos[1].estado).to.eql('COMPLETED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{core_url}}/batch/jobs/estados-anuales/ejecutar?semana=semana_3",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "batch",
+                "jobs",
+                "estados-anuales",
+                "ejecutar"
+              ],
+              "query": [
+                {
+                  "key": "semana",
+                  "value": "semana_3"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Lee el CSV, valida, omite filas invalidas y carga las validas en la BD con varios hilos."
+          }
+        },
+        {
+          "name": "Reporte: transacciones diarias",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Hay filas', () => pm.expect(pm.response.json().length).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{core_url}}/batch/reportes/transacciones-diarias",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "batch",
+                "reportes",
+                "transacciones-diarias"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Reporte: intereses por tipo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Hay filas', () => pm.expect(pm.response.json().length).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{core_url}}/batch/reportes/intereses-trimestrales",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "batch",
+                "reportes",
+                "intereses-trimestrales"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Reporte: estado por cuenta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Hay filas', () => pm.expect(pm.response.json().length).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{core_url}}/batch/reportes/estados-anuales",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "batch",
+                "reportes",
+                "estados-anuales"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Registros rechazados (con motivo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cada rechazo trae motivo', () => pm.response.json().forEach(r => pm.expect(r.MOTIVO).to.be.a('string')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{core_url}}/batch/rechazados/intereses-trimestrales?limite=10",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "batch",
+                "rechazados",
+                "intereses-trimestrales"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "10"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Re-ejecutar con semana_1 (archivo pequeno)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('COMPLETED', () => pm.expect(pm.response.json().estado).to.eql('COMPLETED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{core_url}}/batch/jobs/transacciones-diarias/ejecutar?semana=semana_1",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "batch",
+                "jobs",
+                "transacciones-diarias",
+                "ejecutar"
+              ],
+              "query": [
+                {
+                  "key": "semana",
+                  "value": "semana_1"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Pagos: deposito, pago y transferencia (via Gateway)",
+      "item": [
+        {
+          "name": "Deposito CTA-0002 +100.000 -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Saldo actualizado', () => pm.expect(pm.response.json().saldoDisponible).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{core_url}}/api/pagos/deposito",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                "deposito"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numeroCuenta\": \"CTA-0002\", \"monto\": 100000, \"canal\": \"WEB\", \"descripcion\": \"Deposito de prueba\"}"
+            }
+          }
+        },
+        {
+          "name": "Pago de servicio CTA-0001 -20.000 -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{core_url}}/api/pagos/pago",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                "pago"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numeroCuenta\": \"CTA-0001\", \"monto\": 20000, \"canal\": \"MOVIL\", \"descripcion\": \"Pago cuenta agua\"}"
+            }
+          }
+        },
+        {
+          "name": "Transferencia CTA-0003 -> CTA-0002 (50.000) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{core_url}}/api/pagos/transferencia",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                "transferencia"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"cuentaOrigen\": \"CTA-0003\", \"cuentaDestino\": \"CTA-0002\", \"monto\": 50000, \"canal\": \"WEB\"}"
+            }
+          }
+        },
+        {
+          "name": "Transferencia sobre el maximo (regla del Config Server) -> 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 supera maximo', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{core_url}}/api/pagos/transferencia",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                "transferencia"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"cuentaOrigen\": \"CTA-0003\", \"cuentaDestino\": \"CTA-0001\", \"monto\": 9000000, \"canal\": \"WEB\"}"
+            }
+          }
+        },
+        {
+          "name": "Transferencia a cuenta inexistente -> 404 (saldo del origen se devuelve)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 cuenta destino no existe', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{core_url}}/api/pagos/transferencia",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                "transferencia"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"cuentaOrigen\": \"CTA-0003\", \"cuentaDestino\": \"CTA-9999\", \"monto\": 1000, \"canal\": \"WEB\"}"
+            }
+          }
+        },
+        {
+          "name": "Historial de CTA-0002 (en Pagos) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Incluye el deposito nuevo', () => pm.expect(pm.response.json().some(t => t.descripcion === 'Deposito de prueba')).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{core_url}}/api/legacy/transacciones/cuenta/CTA-0002",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "api",
+                "legacy",
+                "transacciones",
+                "cuenta",
+                "CTA-0002"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Abrir cuenta nueva (Cuentas) -> 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 creada', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{core_url}}/api/legacy/cuentas",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "api",
+                "legacy",
+                "cuentas"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"clienteId\": 1, \"tipoCuenta\": \"ahorro\", \"depositoInicial\": 10000}"
+            }
+          }
+        },
+        {
+          "name": "Crear cliente nuevo (Clientes) -> 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 creado', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{core_url}}/api/legacy/clientes",
+              "host": [
+                "{{core_url}}"
+              ],
+              "path": [
+                "api",
+                "legacy",
+                "clientes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_full}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"rut\": \"11.111.111-1\", \"nombreCompleto\": \"Cliente de Prueba\", \"email\": \"prueba@correo.cl\", \"telefono\": \"+56900000000\"}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Spring Cloud: Eureka y Config Server",
+      "item": [
+        {
+          "name": "Eureka: servicios registrados (abrir en navegador http://localhost:8761)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8761/eureka/apps",
+              "host": [
+                "localhost"
+              ],
+              "port": "8761",
+              "protocol": "http",
+              "path": [
+                "eureka",
+                "apps"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const apps = pm.response.json().applications.application.map(a => a.name);",
+                  "['PAGOS-SERVICE','CUENTAS-SERVICE','CLIENTES-SERVICE','BATCH-SERVICE','API-GATEWAY'].forEach(n => pm.test(n + ' registrado', () => pm.expect(apps).to.include(n)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Config Server: configuracion de batch-service",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8888/batch-service/default",
+              "host": [
+                "localhost"
+              ],
+              "port": "8888",
+              "protocol": "http",
+              "path": [
+                "batch-service",
+                "default"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Entrega propiedades', () => pm.expect(pm.response.json().propertySources.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10 - PRUEBA DE FALLO (ejecutar solo con cuentas-service detenido)",
+      "item": [
+        {
+          "name": "PRUEBA DE FALLO: con core DETENIDO esto devuelve 503",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 503', () => pm.response.to.have.status(503));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mobile_url}}/mobile/cuentas/CTA-0001/resumen",
+              "host": [
+                "{{mobile_url}}"
+              ],
+              "path": [
+                "mobile",
+                "cuentas",
+                "CTA-0001",
+                "resumen"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mobile}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Ejecutar SOLO despues de: docker stop cuentas-service. Repetir 6+ veces para ver el circuito abrirse (mensaje 'circuit breaker ABIERTO'). Luego: docker start cuentas-service y esperar ~15s."
+          }
+        }
+      ]
+    }
+  ]
+}

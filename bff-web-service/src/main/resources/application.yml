@@ -1,0 +1,82 @@
+spring:
+  application:
+    name: bff-web-service
+
+  security:
+    oauth2:
+      # 1) Como RESOURCE SERVER: valida los tokens entrantes con la clave publica del auth-server.
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWK_SET_URI:http://localhost:9000/oauth2/jwks}
+      # 2) Como CLIENT: pide su propio token (client_credentials) para llamar al core-banking-service.
+      client:
+        registration:
+          core-banking:
+            provider: auth-server
+            client-id: bff-web-client
+            client-secret: ${BFF_WEB_SECRET:bff-web-secret}
+            authorization-grant-type: client_credentials
+            client-authentication-method: client_secret_basic
+            scope: banking.read
+        provider:
+          auth-server:
+            token-uri: ${AUTH_TOKEN_URI:http://localhost:9000/oauth2/token}
+
+server:
+  port: 8081
+
+core:
+  banking:
+    base-url: ${CORE_BANKING_URL:http://localhost:8080}
+    connect-timeout-ms: 2000
+    read-timeout-ms: 3000
+
+# ---------------------- Resilience4j ----------------------
+resilience4j:
+  circuitbreaker:
+    instances:
+      coreBankingRead:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 15s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException
+      coreBankingWrite:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 20s
+        permittedNumberOfCallsInHalfOpenState: 2
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException
+  retry:
+    instances:
+      coreBankingRead:
+        maxAttempts: 3
+        waitDuration: 500ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
+          - io.github.resilience4j.bulkhead.BulkheadFullException
+  bulkhead:
+    instances:
+      coreBankingRead:
+        maxConcurrentCalls: 10
+        maxWaitDuration: 0
+      coreBankingWrite:
+        maxConcurrentCalls: 5
+        maxWaitDuration: 0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,circuitbreakers,circuitbreakerevents,retries,bulkheads

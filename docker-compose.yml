@@ -1,0 +1,272 @@
+# =====================================================================
+#  Banco XYZ - Plataforma de microservicios (Exp3 - Semana 9 / EFT)
+#  Levantar todo:   docker compose up -d --build
+#  Ver estado:      docker compose ps
+#  Detener:         docker compose down
+# =====================================================================
+name: banco-xyz
+
+x-app-defaults: &app-defaults
+  restart: unless-stopped          # resiliencia: Docker reinicia el contenedor si cae
+  networks:
+    - banking-net
+
+services:
+
+  # ------------------------- Mensajeria: Apache Kafka (modo KRaft, sin Zookeeper) -------------------------
+  kafka:
+    <<: *app-defaults
+    image: apache/kafka:3.8.0
+    container_name: kafka
+    ports:
+      - "29092:29092"              # acceso desde el host (herramientas / ejecucion local sin Docker)
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://${KAFKA_EXTERNAL_HOST:-localhost}:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list > /dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  # Interfaz web opcional para visualizar topics y mensajes (util para la evidencia)
+  kafka-ui:
+    <<: *app-defaults
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: kafka-ui
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: banco-xyz
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  # ------------------------- Seguridad: Authorization Server OAuth2 -------------------------
+  auth-server:
+    <<: *app-defaults
+    build: ./auth-server
+    image: banco-xyz/auth-server:1.0.0
+    container_name: auth-server
+    ports:
+      - "9000:9000"
+    environment:
+      AUTH_ISSUER: http://auth-server:9000
+      POSTMAN_CLIENT_SECRET: ${POSTMAN_CLIENT_SECRET:-postman-secret}
+      WEB_FRONTEND_SECRET: ${WEB_FRONTEND_SECRET:-web-frontend-secret}
+      MOBILE_APP_SECRET: ${MOBILE_APP_SECRET:-mobile-app-secret}
+      ATM_TERMINAL_SECRET: ${ATM_TERMINAL_SECRET:-atm-terminal-secret}
+      BFF_WEB_SECRET: ${BFF_WEB_SECRET:-bff-web-secret}
+      BFF_MOBILE_SECRET: ${BFF_MOBILE_SECRET:-bff-mobile-secret}
+      BFF_ATM_SECRET: ${BFF_ATM_SECRET:-bff-atm-secret}
+      AUTH_CLIENTE_PASSWORD: ${AUTH_CLIENTE_PASSWORD:-cliente123}
+      AUTH_ADMIN_PASSWORD: ${AUTH_ADMIN_PASSWORD:-admin123}
+
+  # ------------------------- Spring Cloud: descubrimiento y configuracion -------------------------
+  eureka-server:
+    <<: *app-defaults
+    build: ./eureka-server
+    image: banco-xyz/eureka-server:1.0.0
+    container_name: eureka-server
+    ports:
+      - "8761:8761"                # panel web de Eureka (servicios registrados)
+    environment:
+      EUREKA_HOST: eureka-server
+
+  config-server:
+    <<: *app-defaults
+    build: ./config-server
+    image: banco-xyz/config-server:1.0.0
+    container_name: config-server
+    ports:
+      - "8888:8888"                # ej: http://localhost:8888/batch-service/default
+
+  # ------------------------- Microservicios de negocio -------------------------
+  clientes-service:              # sin container_name ni puerto fijo: se puede escalar con --scale
+    <<: *app-defaults
+    build: ./clientes-service
+    image: banco-xyz/clientes-service:1.0.0
+    environment:
+      JWK_SET_URI: http://auth-server:9000/oauth2/jwks
+      EUREKA_URL: http://eureka-server:8761/eureka
+      CONFIG_SERVER_URL: http://config-server:8888
+    depends_on:
+      auth-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+
+  cuentas-service:
+    <<: *app-defaults
+    build: ./cuentas-service
+    image: banco-xyz/cuentas-service:1.0.0
+    container_name: cuentas-service
+    environment:
+      JWK_SET_URI: http://auth-server:9000/oauth2/jwks
+      EUREKA_URL: http://eureka-server:8761/eureka
+      CONFIG_SERVER_URL: http://config-server:8888
+    depends_on:
+      auth-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+
+  pagos-service:
+    <<: *app-defaults
+    build: ./pagos-service
+    image: banco-xyz/pagos-service:1.0.0
+    container_name: pagos-service
+    environment:
+      JWK_SET_URI: http://auth-server:9000/oauth2/jwks
+      EUREKA_URL: http://eureka-server:8761/eureka
+      CONFIG_SERVER_URL: http://config-server:8888
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      auth-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  batch-service:
+    <<: *app-defaults
+    build: ./batch-service
+    image: banco-xyz/batch-service:1.0.0
+    container_name: batch-service
+    ports:
+      - "8105:8105"
+    environment:
+      JWK_SET_URI: http://auth-server:9000/oauth2/jwks
+      EUREKA_URL: http://eureka-server:8761/eureka
+      CONFIG_SERVER_URL: http://config-server:8888
+      BATCH_OUTPUT_DIR: /app/output
+    volumes:
+      - batch-output:/app/output   # los CSV generados sobreviven al contenedor
+    depends_on:
+      auth-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+
+  # ------------------------- API Gateway: puerta unica (enrutamiento + balanceo) -------------------------
+  api-gateway:
+    <<: *app-defaults
+    build: ./api-gateway
+    image: banco-xyz/api-gateway:1.0.0
+    container_name: api-gateway
+    ports:
+      - "8080:8080"                # mismo puerto que usaba el antiguo core: Postman y BFF no cambian
+    environment:
+      EUREKA_URL: http://eureka-server:8761/eureka
+      CONFIG_SERVER_URL: http://config-server:8888
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      cuentas-service:
+        condition: service_healthy
+      clientes-service:
+        condition: service_healthy
+      pagos-service:
+        condition: service_healthy
+
+  # ------------------------- Consumidor Kafka -------------------------
+  notification-service:
+    <<: *app-defaults
+    build: ./notification-service
+    image: banco-xyz/notification-service:1.0.0
+    container_name: notification-service
+    ports:
+      - "8084:8084"
+    environment:
+      JWK_SET_URI: http://auth-server:9000/oauth2/jwks
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      auth-server:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  # ------------------------- BFFs (un backend por canal) -------------------------
+  bff-web-service:
+    <<: *app-defaults
+    build: ./bff-web-service
+    image: banco-xyz/bff-web-service:1.0.0
+    container_name: bff-web-service
+    ports:
+      - "8081:8081"
+    environment:
+      JWK_SET_URI: http://auth-server:9000/oauth2/jwks
+      AUTH_TOKEN_URI: http://auth-server:9000/oauth2/token
+      CORE_BANKING_URL: http://api-gateway:8080
+      BFF_WEB_SECRET: ${BFF_WEB_SECRET:-bff-web-secret}
+    depends_on:
+      auth-server:
+        condition: service_healthy
+      api-gateway:
+        condition: service_healthy
+
+  bff-mobile-service:
+    <<: *app-defaults
+    build: ./bff-mobile-service
+    image: banco-xyz/bff-mobile-service:1.0.0
+    container_name: bff-mobile-service
+    ports:
+      - "8082:8082"
+    environment:
+      JWK_SET_URI: http://auth-server:9000/oauth2/jwks
+      AUTH_TOKEN_URI: http://auth-server:9000/oauth2/token
+      CORE_BANKING_URL: http://api-gateway:8080
+      BFF_MOBILE_SECRET: ${BFF_MOBILE_SECRET:-bff-mobile-secret}
+    depends_on:
+      auth-server:
+        condition: service_healthy
+      api-gateway:
+        condition: service_healthy
+
+  bff-atm-service:
+    <<: *app-defaults
+    build: ./bff-atm-service
+    image: banco-xyz/bff-atm-service:1.0.0
+    container_name: bff-atm-service
+    ports:
+      - "8083:8083"
+    environment:
+      JWK_SET_URI: http://auth-server:9000/oauth2/jwks
+      AUTH_TOKEN_URI: http://auth-server:9000/oauth2/token
+      CORE_BANKING_URL: http://api-gateway:8080
+      BFF_ATM_SECRET: ${BFF_ATM_SECRET:-bff-atm-secret}
+    depends_on:
+      auth-server:
+        condition: service_healthy
+      api-gateway:
+        condition: service_healthy
+
+volumes:
+  batch-output:
+
+networks:
+  banking-net:
+    driver: bridge

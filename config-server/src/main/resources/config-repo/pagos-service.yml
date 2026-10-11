@@ -1,0 +1,7 @@
+# Reglas de negocio del servicio de pagos (se cambian aqui, sin recompilar el servicio)
+pagos:
+  monto-maximo-transferencia: 5000000
+  monto-minimo-operacion: 1
+app:
+  kafka:
+    topic-transacciones: banking.transacciones

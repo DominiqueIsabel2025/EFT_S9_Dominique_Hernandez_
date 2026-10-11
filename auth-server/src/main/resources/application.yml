@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: auth-server
+
+server:
+  port: 9000
+
+# Issuer FIJO: el claim "iss" de todos los tokens sera el mismo sin importar
+# si el token se pide desde Postman (localhost:9000) o desde otro contenedor
+# (auth-server:9000). Los resource servers validan la firma via JWKS.
+auth:
+  issuer: ${AUTH_ISSUER:http://localhost:9000}
+  users:
+    cliente-password: ${AUTH_CLIENTE_PASSWORD:cliente123}
+    admin-password: ${AUTH_ADMIN_PASSWORD:admin123}
+  clients:
+    postman-secret: ${POSTMAN_CLIENT_SECRET:postman-secret}
+    web-frontend-secret: ${WEB_FRONTEND_SECRET:web-frontend-secret}
+    mobile-app-secret: ${MOBILE_APP_SECRET:mobile-app-secret}
+    atm-terminal-secret: ${ATM_TERMINAL_SECRET:atm-terminal-secret}
+    bff-web-secret: ${BFF_WEB_SECRET:bff-web-secret}
+    bff-mobile-secret: ${BFF_MOBILE_SECRET:bff-mobile-secret}
+    bff-atm-secret: ${BFF_ATM_SECRET:bff-atm-secret}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

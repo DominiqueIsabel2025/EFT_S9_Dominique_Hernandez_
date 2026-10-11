@@ -1,0 +1,5 @@
+# Configuracion COMUN a todos los microservicios (se aplica a cualquier servicio que use el Config Server)
+logging:
+  level:
+    root: INFO
+    cl.duoc: INFO

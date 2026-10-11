@@ -1,0 +1,13 @@
+# Parametros de negocio de los procesos batch
+batch:
+  chunk-size: 50
+  threads: 4
+  skip-limit: 900
+  max-reintentos-job: 3
+  umbral-anomalia: 3000
+  edad-minima: 18
+  edad-maxima: 120
+  tasas:
+    ahorro: 0.015
+    prestamo: 0.03
+    hipoteca: 0.02
